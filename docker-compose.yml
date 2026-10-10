@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: library
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d library"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../test-manager-library-3413974-api
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_DATABASE=library
+      - DB_USERNAME=root
+      - DB_PASSWORD=password
+    volumes:
+      - ../test-manager-library-3413974-api:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    build:
+      context: ../test-manager-library-3413974-app
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../test-manager-library-3413974-app:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+
+volumes:
+  db-data:
